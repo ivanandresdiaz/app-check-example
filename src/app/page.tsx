@@ -44,7 +44,9 @@ export default function Home() {
       })
       .catch((error) => {
         const errorCode = error.code;
+
         const errorMessage = error.message;
+        alert(errorMessage);
       });
   };
   const logout = async () => {
@@ -62,10 +64,11 @@ export default function Home() {
       } else {
         // docSnap.data() will be undefined in this case
         console.log("No such document!");
-        setDataFirestore([]);
+        setDataFirestore(["errror"]);
       }
     } catch (error) {
-      console.log("error", error);
+      console.log("error firestore", error);
+      setDataFirestore([error.code]);
     }
   };
   const getURLImage = async () => {
@@ -78,7 +81,8 @@ export default function Home() {
           setUrlImage(url);
         })
         .catch((error) => {
-          setUrlImage(null);
+          // setUrlImage(null);
+          setUrlImage("error_image");
           // A full list of error codes is available at
           // https://firebase.google.com/docs/storage/web/handle-errors
           switch (error.code) {
@@ -105,7 +109,7 @@ export default function Home() {
         });
     } catch (error) {
       console.log("error", error);
-      setUrlImage(null);
+      setUrlImage("error_image");
     }
   };
   const getDbRealtime = async () => {
@@ -116,8 +120,8 @@ export default function Home() {
         setDataRealtimeDb([data]);
       });
     } catch (error) {
-      alert("Error realtime DB");
-      console.log("error", error);
+      console.log("error realtime", error);
+      setDataRealtimeDb([error.code]);
     }
   };
 
@@ -181,7 +185,12 @@ export default function Home() {
       <h1>Realtime Database</h1>
       <div>{JSON.stringify(dataRealtimeDb)}</div>
       <h1>Firestorage</h1>
-      {urlImage && <img src={urlImage} alt="d" width={100} height={100} />}
+      {urlImage &&
+        (urlImage === "error_image" ? (
+          "ERROR IMAGE"
+        ) : (
+          <img src={urlImage} alt="d" width={100} height={100} />
+        ))}
       <h1>
         Cloud function Callable :{" "}
         {callableFunctionOk

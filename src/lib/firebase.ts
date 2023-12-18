@@ -50,4 +50,4 @@ const auth = getAuth();
 const realtimeDb = getDatabase();
 const functions = getFunctions(app);
 
-export { db, storage, auth, AppCheckInstance, app, realtimeDb, functions };
+export { db, storage, auth, app, realtimeDb, functions };
