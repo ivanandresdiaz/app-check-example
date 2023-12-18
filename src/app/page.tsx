@@ -66,7 +66,7 @@ export default function Home() {
         console.log("No such document!");
         setDataFirestore(["errror"]);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.log("error firestore", error);
       setDataFirestore([error.code]);
     }
@@ -119,7 +119,7 @@ export default function Home() {
         const data = snapshot.val();
         setDataRealtimeDb([data]);
       });
-    } catch (error) {
+    } catch (error: any) {
       console.log("error realtime", error);
       setDataRealtimeDb([error.code]);
     }
