@@ -1,113 +1,214 @@
-import Image from 'next/image'
+/* eslint-disable @next/next/no-img-element */
+"use client";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import useGetContextSession from "@/hooks/useGetDataSession";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth, db, functions, realtimeDb, storage } from "@/lib/firebase";
+import { getDownloadURL, ref } from "firebase/storage";
+import { onValue, ref as refDb } from "firebase/database";
+import { doc, getDoc } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
 
 export default function Home() {
+  const { user } = useGetContextSession();
+  const [dataFirestore, setDataFirestore] = useState<any[]>([]);
+  const [dataRealtimeDb, setDataRealtimeDb] = useState<any[]>([]);
+  const [callableFunctionOk, setCallableFunctionOk] = useState<boolean | null>(
+    null
+  );
+  const [httpRequestFunctionOk, setHttpRequestFunctionOk] = useState<
+    boolean | null
+  >(null);
+  const [thirdBackendOk, setThirdBackendOk] = useState<boolean | null>(null);
+  const [urlImage, setUrlImage] = useState<string | null>(null);
+
+  const { register, handleSubmit } = useForm({
+    defaultValues: {
+      password: "",
+      email: "",
+    },
+  });
+  const onSubmit = (data: any) => {
+    const { email, password } = data;
+    console.log("data", data);
+    if (!email || !password) {
+      alert("Please fill all fields");
+      return;
+    }
+    signInWithEmailAndPassword(auth, email, password)
+      .then((userCredential) => {
+        // Signed in
+        const user = userCredential.user;
+        // ...
+      })
+      .catch((error) => {
+        const errorCode = error.code;
+        const errorMessage = error.message;
+      });
+  };
+  const logout = async () => {
+    try {
+      await auth.signOut();
+    } catch (error) {}
+  };
+  const getDataFirestore = async () => {
+    try {
+      const docRef = doc(db, "data-firestore", "testing");
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        setDataFirestore([docSnap.data()]);
+        console.log("Document data:");
+      } else {
+        // docSnap.data() will be undefined in this case
+        console.log("No such document!");
+        setDataFirestore([]);
+      }
+    } catch (error) {
+      console.log("error", error);
+    }
+  };
+  const getURLImage = async () => {
+    try {
+      const starsRef = ref(storage, "Python-logo-notext.svg.png");
+      // Get the download URL
+      getDownloadURL(starsRef)
+        .then((url) => {
+          // Insert url into an <img> tag to "download"
+          setUrlImage(url);
+        })
+        .catch((error) => {
+          setUrlImage(null);
+          // A full list of error codes is available at
+          // https://firebase.google.com/docs/storage/web/handle-errors
+          switch (error.code) {
+            case "storage/object-not-found":
+              // File doesn't exist
+              alert("File doesn't exist");
+              break;
+            case "storage/unauthorized":
+              // User doesn't have permission to access the object
+              alert("User doesn't have permission to access the object");
+              break;
+            case "storage/canceled":
+              // User canceled the upload
+              alert("User canceled the upload");
+              break;
+
+            // ...
+
+            case "storage/unknown":
+              // Unknown error occurred, inspect the server response
+              alert("Unknown error occurred, inspect the server response");
+              break;
+          }
+        });
+    } catch (error) {
+      console.log("error", error);
+      setUrlImage(null);
+    }
+  };
+  const getDbRealtime = async () => {
+    try {
+      const starCountRef = refDb(realtimeDb, "testing");
+      onValue(starCountRef, (snapshot) => {
+        const data = snapshot.val();
+        setDataRealtimeDb([data]);
+      });
+    } catch (error) {
+      alert("Error realtime DB");
+      console.log("error", error);
+    }
+  };
+
+  const TestCloudFunctionCallable = async () => {
+    const addMessage = httpsCallable(functions, "callableFunctions");
+    console.log("addMessage", addMessage);
+    await addMessage()
+      .then((result) => {
+        console.log("result", result);
+        const data = result.data;
+        console.log("data", data);
+        setCallableFunctionOk(true);
+      })
+      .catch((error) => {
+        console.log("error", error);
+        setCallableFunctionOk(false);
+      });
+  };
+  const testHttpRequestFunction = async () => {
+    try {
+      const url = "https://helloworld-654zlv26wa-uc.a.run.app";
+      const response = await fetch(url);
+      const data = await response.json();
+      console.log("data", data);
+      setHttpRequestFunctionOk(true);
+    } catch (error) {
+      setHttpRequestFunctionOk(false);
+      console.log("error", error);
+    }
+  };
+  const testThirdBackend = async () => {
+    try {
+      const url = "https://thirdbackend-654zlv26wa-uc.a.run.app";
+      const response = await fetch(url);
+      const data = await response.json();
+      console.log("data", data);
+      setThirdBackendOk(true);
+    } catch (error) {
+      setThirdBackendOk(false);
+      console.log("error", error);
+    }
+  };
+
+  useEffect(() => {
+    getDataFirestore();
+    getURLImage();
+    getDbRealtime();
+  }, []);
+  console.log("user", user);
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">src/app/page.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
-      </div>
-
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 before:lg:h-[360px] z-[-1]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className="mb-32 grid text-center lg:max-w-5xl lg:w-full lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Explore starter templates for Next.js.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
-  )
+    <div>
+      <h1>Autentication: {JSON.stringify(user)}</h1>
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <input {...register("email")} />
+        <input {...register("password")} />
+        <button type="submit">Login</button>
+      </form>
+      <button onClick={logout}>Logout</button>
+      <h1>Firestore</h1>
+      <div>{JSON.stringify(dataFirestore)}</div>
+      <h1>Realtime Database</h1>
+      <div>{JSON.stringify(dataRealtimeDb)}</div>
+      <h1>Firestorage</h1>
+      {urlImage && <img src={urlImage} alt="d" width={100} height={100} />}
+      <h1>
+        Cloud function Callable :{" "}
+        {callableFunctionOk
+          ? "ok"
+          : typeof callableFunctionOk === "boolean"
+          ? "No ok"
+          : ""}
+      </h1>
+      <button onClick={TestCloudFunctionCallable}>Callable Function</button>
+      <h1>
+        Cloud function Request :{" "}
+        {httpRequestFunctionOk
+          ? "ok"
+          : typeof httpRequestFunctionOk === "boolean"
+          ? "No ok"
+          : ""}
+      </h1>
+      <button onClick={testHttpRequestFunction}>Request Function</button>
+      <h1>
+        Third backend{" "}
+        {thirdBackendOk
+          ? "ok"
+          : typeof thirdBackendOk === "boolean"
+          ? "No ok"
+          : ""}
+      </h1>
+      <button onClick={testThirdBackend}>Third backend </button>
+    </div>
+  );
 }
